@@ -99,7 +99,7 @@ Qr  = np.zeros(N)
 
 timpsc[:] = fix(f_xtaln / 2**timbits / fnco)
 timval = fix(f_xtaln / fs / timpsc[0]) * (n+1)
-timval[0] = 10
+timval[0] = 3000  # rekonstruovany signal zavisi na vychozi hodnote timeru, coz uplne nechapu
 timval = np.mod(timval, 2**timbits)
 u = timval / 2**timbits
 
