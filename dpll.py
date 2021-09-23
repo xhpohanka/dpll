@@ -94,6 +94,8 @@ phase_error = np.zeros(N)
 vtune = np.zeros(N)
 timval = np.zeros(N)
 timpsc  = np.zeros(N)
+Ir  = np.zeros(N)
+Qr  = np.zeros(N)
 
 timpsc[:] = fix(f_xtaln / 2**timbits / fnco)
 timval = fix(f_xtaln / fs / timpsc[0]) * (n+1)
@@ -105,11 +107,11 @@ u = timval / 2**timbits
 [bl, al] = signal.butter(4, 60 / (fs / 2))
 
 # filter states
-hbi = None
-hbdi = None
+hbi = signal.lfilter_zi(hb, 1)
+hbdi = signal.lfilter_zi(hbd, 1)
 bli = signal.lfilter_zi(bl, al)
 
-for n in np.arange(N):
+for n in np.arange(1, N):
 
     timval[n] = timval[n - 1] + fix(f_xtaln / fs / timpsc[n - 1])
     timval[n] = np.mod(timval[n], 2**timbits)
