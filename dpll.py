@@ -5,6 +5,13 @@ from matplotlib import pyplot as plt
 from numpy import pi, fix
 from scipy.interpolate import interp1d
 
+## zajimave cteni
+# https://www.dsprelated.com/showarticle/1177.php
+# https://www.dsprelated.com/showarticle/1147.php
+# https://www.dsprelated.com/showarticle/973.php
+# https://www.dsprelated.com/showarticle/967.php
+# https://www.ti.com/lit/an/sprabt3a/sprabt3a.pdf?ts=1632381751458
+
 def quant(v, b):
     return np.round(v * 2**b) / 2**b
 
