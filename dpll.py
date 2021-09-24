@@ -105,8 +105,7 @@ Ir  = np.zeros(N)
 Qr  = np.zeros(N)
 
 timpsc[:] = fix(f_xtaln / 2**timbits / fnco)
-timval = fix(f_xtaln / fs / timpsc[0]) * (n+1)
-timval[0] = 3000  # rekonstruovany signal zavisi na vychozi hodnote timeru, coz uplne nechapu
+timval = fix(f_xtaln / fs / timpsc[0]) * (n + 0)
 timval = np.mod(timval, 2**timbits)
 u = timval / 2**timbits
 
@@ -140,7 +139,7 @@ for n in np.arange(1, N):
         pe = -Ir[n - 1] * Qnco + Qr[n - 1] * Inco
 
     else:
-        pe = Vr[n - 1] * Qnco
+        pe = +Vr[n - 1] * Qnco
 
         # odfiltrovani druhe harmonicke
         [pe, bli] = signal.lfilter(bl, al, [pe], 0, bli)
@@ -167,14 +166,13 @@ for n in np.arange(1, N):
 
 # obnova signalu
 # % u = timval / 2^timbits
-du = np.diff(u, append=u[-1])
 du = np.diff(u, prepend=u[0])
 du[du < 0] = 1 + du[du < 0] # oprava preteceni
-dus = np.cumsum(du)
+dus = np.cumsum(du) + u[0] # ta predchozi diferenciace odstranila vychozi hodnotu
 f = interp1d(t, dus, bounds_error=False)
 dusi = f(ti)
-Vrec  = np.cos(2 * pi * dus)
-Vreci = np.cos(2 * pi * dusi)
+Vrec  = np.sin(2 * pi * dus)
+Vreci = np.sin(2 * pi * dusi)
 
 # plt.close("all")
 figs = list(map(plt.figure, plt.get_fignums()))
@@ -187,9 +185,10 @@ psd(y[N//2:-1], 1024, fs)
 
 fig, axs = plt.subplots(2, num=2)
 axs[0].plot(t, Vr)
-axs[0].plot(t[1:-2], y[2:-1])
-# axs[0].set_xlim(np.take(t, t.size*0.9), t[-1])
-axs[0].set_xlim(t[0], np.take(t, t.size*0.05))
+shift = 2
+axs[0].plot(t[shift:], y[:-shift])
+axs[0].set_xlim(np.take(t, t.size*0.9), t[-1])
+# axs[0].set_xlim(t[0], np.take(t, t.size*0.05))
 axs[1].plot(t, vtune)
 axs[1].plot(t, phase_error)
 
@@ -198,6 +197,8 @@ plt.figure(3)
 plt.plot(t, Vr)
 plt.plot(t, Vrec)
 plt.plot(ti, Vreci)
-plt.gca().set_xlim(np.take(t, t.size*0.99), t[-1])
+plt.plot(t, np.mod(dus, 1), 'x--')
+# plt.gca().set_xlim(np.take(t, t.size*0.99), t[-1])
+plt.gca().set_xlim(t[0], np.take(t, t.size*0.05))
 plt.legend(['Vr', 'Vrec', 'Vreci'])
 
