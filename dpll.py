@@ -101,7 +101,7 @@ u = timval / 2**timbits
 (hb, hbd) = mhilbert(15)
 
 # low pass
-[bl, al] = signal.butter(5, 55, fs=fs)
+[bl, al] = signal.butter(4, 60, fs=fs)
 # [bl, al] = signal.cheby1(10, 2, 65, fs=fs)
 # [bl, al] = [signal.firwin(8, 75, fs=fs), 1]
 
@@ -137,13 +137,6 @@ Ir_ = 0
 
 for n in np.arange(N):
     if use_timer:
-        # opravna freq
-        ffix = vtune_ / Ts
-        if use_prescaler:
-            timpsc_ = round(f_xtaln / arr_ / (fnco + ffix))
-        else:
-            arr_ = round(f_xtaln / timpsc_ / (fnco + ffix))
-
         timval_ = timval_ + fix(f_xtaln / fs / timpsc_)
         timval_ = np.mod(timval_, arr_)
         u_ = timval_ / arr_
@@ -203,6 +196,13 @@ for n in np.arange(N):
 
     vtune_ = min(max(vtune_, -1), 1)
 
+    # opravna freq
+    ffix = vtune_ / Ts
+    if use_prescaler:
+        timpsc_ = round(f_xtaln / arr_ / (fnco + ffix))
+    else:
+        arr_ = round(f_xtaln / timpsc_ / (fnco + ffix))
+
     # sledovaci signaly si ulozime zvlast, at se nam neplete, co se uklada a co ne
     phase_error[n] = pe
     vtune[n] = vtune_
@@ -248,6 +248,7 @@ shift = 1
 axs[0].plot(t, y)
 axs[0].legend(['Vr', 'y'])
 axs[0].set_xlim(t[0], np.take(t, t.size*0.08))
+axs[0].set_title(f'f_ref = {fref:.2f}, f_s = {fs}')
 # axs[0].set_xlim(np.take(t, t.size*0.9), t[-1])
 axs[1].plot(t, vtune)
 axs[1].plot(t, phase_error)
