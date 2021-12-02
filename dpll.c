@@ -63,12 +63,12 @@ float dpll_step(int sample, int timval, int reload_val)
     // if small enough we can reduce action
     float k1 = 0.01;
     avg = k1 * pe + (1 - k1) * avg;
-    if (abs(avg) < 0.001 || locked) {
+    if (fabsf(avg) < 0.001 || locked) {
         ki = ki  / 5;
         kl = kl  / 5;
         locked = 1;
     }
-    else if (abs(avg) > 0.01) {
+    else if (fabsf(avg) > 0.01) {
         locked = 0;
     }
 
