@@ -113,11 +113,13 @@ int main()
     for (int i = 0; i < 1000; ++i) {
         int t = timer(F_S, arr, psc);
         float s = 0.61 * sinf(2 * PI * i / (float) F_S * 50 + 2.75);
+        float tune = dpll_step(s * ADC_MAX, t, arr);
 
-        float tune = dpll_step(roundf(s * 4096), t, arr);
+        // bacha rekonstruovat musme pred opravou timeru
+        float s_rec = 1 * sinf(2 * PI * t / arr);
+
         dpll_fix(tune, &psc, &arr);
 
-        float s_rec = sinf(2 * PI * t / arr);
         printf("%.3f %.3f %d %d %.3f\n",
                s * 1000, tune * 1000, psc, arr, s_rec * 1000);
     }
