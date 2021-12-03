@@ -110,9 +110,16 @@ int main()
         psc = 1;
     arr = F_PLL / F_NCO / psc;
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 200 * F_S / F_NCO; ++i) {
         int t = timer(F_S, arr, psc);
-        float s = 0.61 * sinf(2 * PI * i / (float) F_S * 50 + 2.75);
+        float s = 0.85 * sinf(2 * PI * i / (float) F_S * 65 + 2.75);
+        s += 0.02 * rand() / RAND_MAX;
+
+        // simulace chyby
+        if (i == 100 * F_S / F_NCO)
+            for (int k = 0; k < 40; k++)
+                timer(F_S, arr, psc);
+
         float tune = dpll_step(s * ADC_MAX, t, arr);
 
         // bacha rekonstruovat musme pred opravou timeru
