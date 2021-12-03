@@ -100,9 +100,9 @@ void dpll_fix(float tune, int *psc, int *arr)
 {
     float ffix = tune * F_S;
 #if defined(USE_PSC)
-    *psc = F_PLL / *arr / (F_NCO + ffix);
+    *psc = roundf(F_PLL / *arr / (F_NCO + ffix));
 #else
-    *arr = F_PLL / *psc / (F_NCO + ffix);
+    *arr = roundf(F_PLL / *psc / (F_NCO + ffix));
 #endif
 }
 
