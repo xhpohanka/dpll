@@ -44,8 +44,8 @@ float filter_df2t(struct filter_desc *fd, float x)
 float dpll_step(int sample, int timval, int reload_val)
 {
     static float integ = 0;
-    static float avg = .1; // start from bigger error
-    static float locked = 0;
+    static float avg = 0;
+    static int locked = 0;
     float ki = KI;
     float kl = KL;
 
@@ -63,10 +63,15 @@ float dpll_step(int sample, int timval, int reload_val)
     // if small enough we can reduce action
     float k1 = 0.01;
     avg = k1 * pe + (1 - k1) * avg;
-    if (fabsf(avg) < 0.001 || locked) {
-        ki = ki  / 5;
-        kl = kl  / 5;
-        locked = 1;
+
+    // bacha nechodi na vyssich fs
+    if (fabsf(avg) < 0.001) {
+        if (locked > 5) {
+            ki = ki / 5;
+            kl = kl / 5;
+        } else {
+            locked++;
+        }
     }
     else if (fabsf(avg) > 0.01) {
         locked = 0;
