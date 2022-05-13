@@ -215,10 +215,7 @@ for n in np.arange(N):
 
 # obnova signalu
 # % u = timval / 2^timbits
-du = np.diff(u, prepend=u[0])
-# du = np.diff(u, append=u[-1])
-du[du < 0] = 1 + du[du < 0] # oprava preteceni
-dus = np.cumsum(du) + u[0] # ta predchozi diferenciace odstranila vychozi hodnotu
+dus = np.unwrap(u, period=1)
 f = interp1d(t, dus, bounds_error=False)
 dusi = f(ti)
 Vrec  = np.sin(2 * pi * dus)  # sin nebo cos, podle toho, na co optimalizujem, I nebo Q
