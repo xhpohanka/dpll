@@ -33,14 +33,29 @@ fmin = 35
 
 iq = 20  # interpolation ratio
 
-
 # zakladni frekvence MCU (zatizena chybou)
 f_base = (f_xtaln * 1.00)
 fs = f_base / (f_xtaln/fs) # nepresna vzorkovacka
 Ts = 1/fs
 
+# vstupni signal vyrobime s vyssi vzorkovackou a pak podsamplujeme
+# podsamplovani potrebuje orez frekvenci nad Nyqitsem, ze ano a do toho si oriznem i zbytecny sum
+# vnese nam to fazovej posuv, kterej se s FIR filtrem resi jednoduse
+over_ratio = 5
+inf_taps = 11
+b_in, a_in = signal.firwin(inf_taps, 60, fs=(fs * over_ratio)), 1
+# kompenzace fazovyho posunu od vstupniho filtru
+f_shift = (inf_taps - 1) // 2 // over_ratio
+
+# pokus s vstupnim filtrem IIR
+# zatim nevim, jak se vyporadat s fazovym posunem
+# napad pouzit stejnej filtr na signal NCO nevychazi, protoze tenhle filter je nadesignovanej na vyssi fs
+# b_in, a_in = signal.ellip(5, 1, 50, [65], fs=(fs*over_ratio))
+# inf_i = signal.lfilter_zi(b_in, a_in)
+# f_shift = 0
+
 # testovaci signal vygenerujem, nebo pouzijem nejakej zmerenej
-if 0:
+if 1:
     N = int(5.5 / Ts)
 
     n = np.arange(N)
@@ -48,17 +63,28 @@ if 0:
     ti = np.arange(N * iq) * Ts / iq
 
 
-    ff = np.ones(N) * fref
+    ff = np.ones(N * over_ratio) * fref
     fref_err = 1.1
     # ff[N * 4 // 5:] = fref * fref_err
     # ff[N * 3 // 5:N * 4 // 5] = np.linspace(1, fref_err, N*1//5) * fref
-    phi = np.cumsum(2 * pi * ff/fs)
+
+    phi = np.cumsum(2 * pi * ff/(fs*over_ratio))
 
     # ref signal
-    A = .9
+    A = .5
     Vro = np.sin(phi + pi/3)
-    Vr = A * Vro + .01293585 * np.random.randn(N)
+    Vr = A * Vro + .05293585 * np.random.randn(len(phi))
+
+    # vstupni signal je potreba podvzorkovat, ale predtim samozrejme oriznout nehezke frekvence
+    Vrf = Vr
+    Vrf = signal.lfilter(b_in, a_in, Vr)
+
+    Vrf = Vrf[::over_ratio]
+    Vr = Vr[::over_ratio]
+    Vro = Vro[::over_ratio]
+
     Vr = quant(Vr, 10)
+    Vrf = quant(Vrf, 10)
 
 else:
     Vr = np.loadtxt('grid_200fs5.txt', delimiter=';')
@@ -179,19 +205,24 @@ for n in np.arange(N):
     Inco = np.sin(2 * pi * u_)
     Qnco = np.cos(2 * pi * u_)
 
+    x = Vrf[n]
+
+    y[n], yq[n] = Inco, Qnco
+    Inco_act, Qnco_act = y[n - f_shift], yq[n - f_shift]
+
     if use_hilbert:
         # tohle proste neumim rozchodit tak, aby se to chytalo na nulovou fazi
-        [Qr_, hbdi] = signal.lfilter(hbd, 1, [Vr[n]], 0, hbdi)
-        [Ir_, hbi]  = signal.lfilter(hb,  1, [Vr[n]], 0, hbi)
+        [Qr_, hbdi] = signal.lfilter(hbd, 1, [x], 0, hbdi)
+        [Ir_, hbi]  = signal.lfilter(hb,  1, [x], 0, hbi)
         Qr_ = Qr_[0]
         Ir_ = Ir_[0]
 
         # Phase Detector
-        pe = -Ir_ * Qnco + Qr_ * Inco
+        pe = -Ir_ * Qnco_act + Qr_ * Inco_act
 
     else:
-        pe = +Vr[n] * Qnco
-        #+ Vr[n] * Inco
+        pe = +x * Qnco_act
+        #+ x * Inco
 
         # odfiltrovani druhe harmonicke
         [pe, lpi] = signal.lfilter(bl, al, [pe], 0, lpi)
@@ -219,6 +250,8 @@ for n in np.arange(N):
             locked = True
 
         if np.abs(pem) > 0.02:
+            KIa, KLa = KI, KL
+
             if locked:
                 print(f'unlocked {n}, {n*Ts:0.2f}s')
                 print(KIa, KLa)
@@ -250,8 +283,6 @@ for n in np.arange(N):
     u[n] = u_
     arr[n] = arr_
     timpsc[n] = timpsc_
-    y[n] = Inco
-    yq[n] = Qnco
     pemsig[n] = pem
 
 
@@ -329,5 +360,9 @@ plt.plot(t, arr)
 plt.legend(['arr', 'psc'])
 
 
+step = 1/fref/2 / 256
+t_uncert = 1 / (f_xtaln/psc) * np.sqrt(arr_var)
+
+
 print(f'arr mean {arr_mean}, arr var {arr_var}, arr sd {np.sqrt(arr_var)}, var/mean {arr_var/arr_mean}')
-print(f'time uncertainity {1 / (f_xtaln/psc) * np.sqrt(arr_var):.3e}')
+print(f'time uncertainity {t_uncert:.3e} ~ {t_uncert/step:.2f} of minimal dimmer step')
