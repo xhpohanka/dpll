@@ -42,8 +42,8 @@ def psd(x, nfft, fs):
     plt.plot(f, P)
     plt.grid(True)
 
-def freqzz(b, a, **kwargs):
+def freqzz(b, a, num=10, **kwargs):
     (w, h) = signal.freqz(b, a, **kwargs)
-    fig, axs = plt.subplots(2, num=10)
+    fig, axs = plt.subplots(2, num=num)
     axs[0].plot(w, 20*np.log10(abs(h)))
     axs[1].plot(w, np.unwrap(np.angle(h)))
