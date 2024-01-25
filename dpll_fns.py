@@ -45,8 +45,10 @@ def psd(x, nfft, fs, cut=0):
         plt.plot(f, P)
     plt.grid(True)
 
-def freqzz(b, a, num=10, **kwargs):
-    (w, h) = signal.freqz(b, a, **kwargs)
-    fig, axs = plt.subplots(2, num=num)
+def freqzz(b, a, num=10, fs=2*np.pi, **kwargs):
+    (w, h) = signal.freqz(b, a, fs=fs, **kwargs)
+    fig, axs = plt.subplots(3, num=num)
     axs[0].plot(w, 20*np.log10(abs(h)))
     axs[1].plot(w, np.unwrap(np.angle(h)))
+    w, g = signal.group_delay((b, a), fs=fs)
+    axs[2].plot(w, g)
