@@ -41,11 +41,16 @@ Ts = 1/fs
 # vstupni signal vyrobime s vyssi vzorkovackou a pak podsamplujeme
 # podsamplovani potrebuje orez frekvenci nad Nyqitsem, ze ano a do toho si oriznem i zbytecny sum
 # vnese nam to fazovej posuv, kterej se s FIR filtrem resi jednoduse
-over_ratio = 5
+over_ratio = 6
 inf_taps = 11
 b_in, a_in = signal.firwin(inf_taps, 60, fs=(fs * over_ratio)), 1
+b_in = np.hstack([0, b_in])
+inf_taps = len(b_in)
+
+
 # kompenzace fazovyho posunu od vstupniho filtru
-f_shift = (inf_taps - 1) // 2 // over_ratio
+# f_shift = (inf_taps - 1) // 2 // over_ratio  # bacha, taky to to over_ratio muze rozbit
+f_shift = np.round(signal.group_delay((b_in, a_in))[1].mean()).astype(int) // over_ratio
 
 # pokus s vstupnim filtrem IIR
 # zatim nevim, jak se vyporadat s fazovym posunem
@@ -54,14 +59,15 @@ f_shift = (inf_taps - 1) // 2 // over_ratio
 # inf_i = signal.lfilter_zi(b_in, a_in)
 # f_shift = 0
 
+insig = 0
+
 # testovaci signal vygenerujem, nebo pouzijem nejakej zmerenej
-if 1:
+if insig == 0:
     N = int(5.5 / Ts)
 
     n = np.arange(N)
     t = n * Ts
     ti = np.arange(N * iq) * Ts / iq
-
 
     ff = np.ones(N * over_ratio) * fref
     fref_err = 1.1
@@ -73,20 +79,11 @@ if 1:
     # ref signal
     A = .5
     Vro = np.sin(phi + pi/3)
-    Vr = A * Vro + .05293585 * np.random.randn(len(phi))
+    Vr = A * Vro + .1 * np.random.randn(len(phi))
 
-    # vstupni signal je potreba podvzorkovat, ale predtim samozrejme oriznout nehezke frekvence
-    Vrf = Vr
-    Vrf = signal.lfilter(b_in, a_in, Vr)
+    Vro = Vr
 
-    Vrf = Vrf[::over_ratio]
-    Vr = Vr[::over_ratio]
-    Vro = Vro[::over_ratio]
-
-    Vr = quant(Vr, 10)
-    Vrf = quant(Vrf, 10)
-
-else:
+elif insig == 1:
     Vr = np.loadtxt('grid_200fs5.txt', delimiter=';')
     Vr = Vr[-1, :] * 2.5
     Vro = Vr
@@ -101,6 +98,39 @@ else:
     ti = np.arange(N * 10) * Ts / 10
     iq = 10
 
+elif insig == 2:
+    d = np.loadtxt('/home/honza/dev/goertzel/signaly_noise/RigolDS2.csv', skiprows=1, delimiter=',')
+    fsi = 1 / 1e-6
+    Ni = d.shape[0]
+    ti = np.arange(Ni) * 1/fsi
+    Vri = d[:, 1]
+    A = 0.5
+    Vri = Vri / Vri.max() * A
+
+    # prvni hloupa decimace
+    iqq = int(fsi // (fs * over_ratio))
+    Vr = Vri[::iqq]
+    ti = ti[::iqq]
+    iq = over_ratio
+
+    N = Vr.size // over_ratio
+    n = np.arange(N)
+    t = n / fs
+
+    Vro = Vr
+
+# vstupni signal je potreba podvzorkovat, ale predtim samozrejme oriznout nehezke frekvence
+Vrf = Vr
+Vrf = signal.lfilter(b_in, a_in, Vr)
+# f_shift = 0
+
+Vri = Vr
+Vrf = Vrf[0::over_ratio]
+Vr = Vr[0::over_ratio]
+Vro = Vro[0::over_ratio]
+
+Vr = quant(Vr, 10)
+Vrf = quant(Vrf, 10)
 
 def get_kx(Ts, fn, Knco, zeta=1.0, kp=2.0):
     # vypocet konstant, viz dsp related Part 2
@@ -307,10 +337,11 @@ vtune_mean = np.mean(vtune[N//2:])
 vtune_var = np.var(vtune[N//2:])
 
 plt.figure(1)
+psd(Vri, 1024*2, fs * over_ratio, cut=N//over_ratio)
 psd(Vr, 1024*2, fs)
 psd(y[N//2:], 1024*2, fs)
 # psd(Vr[0:N//4], 512, fs)
-plt.legend(['Vr', 'y'])
+plt.legend(['Vri', 'Vr', 'y'])
 plt.title(f'hilbert = {use_hilbert}')
 
 fig, axs = plt.subplots(2, num=2)
@@ -341,7 +372,7 @@ plt.plot(ti, np.mod(dusi, 1), '--')
 # plt.plot(t, yy)
 plt.gca().set_xlim(np.take(t, t.size*0.99), t[-1])
 # plt.gca().set_xlim(t[0], np.take(t, t.size*0.05))
-plt.legend(['Vr', 'Vroi', 'Vrec', 'Vreci', 'y'])
+plt.legend(['Vro', 'Vroi', 'Vrec', 'Vreci', 'y'])
 
 
 plt.figure(4)
@@ -359,6 +390,9 @@ plt.plot(t, arr)
 # plt.plot(t, timpsc)
 plt.legend(['arr', 'psc'])
 
+
+freqzz(b_in, a_in, fs=fs*over_ratio, num=6)
+freqzz(bl, al, fs=fs, num=7)
 
 step = 1/fref/2 / 256
 t_uncert = 1 / (f_xtaln/psc) * np.sqrt(arr_var)
