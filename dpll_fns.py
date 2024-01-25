@@ -37,9 +37,12 @@ def psd_simple(x, nfft, fs):
 
     return (PdB, f)
 
-def psd(x, nfft, fs):
+def psd(x, nfft, fs, cut=0):
     (P, f) = psd_simple(x, nfft, fs)
-    plt.plot(f, P)
+    if cut:
+        plt.plot(f[:cut], P[:cut])
+    else:
+        plt.plot(f, P)
     plt.grid(True)
 
 def freqzz(b, a, num=10, **kwargs):
